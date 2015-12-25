@@ -32,6 +32,7 @@
 
 @property (nonatomic, strong) NSMutableArray *results;
 @property (nonatomic, strong) Searcher *searcher;
+@property (nonatomic, strong) NSMutableArray *deletionArray;
 
 // Handle the ui updates
 - (void)setUIEnabled:(BOOL)state;
@@ -39,6 +40,7 @@
 @end
 
 // Constant strings
+static NSString *const kTableColumnSelectIcon = @"SelectIcon";
 static NSString *const kTableColumnImageIcon = @"ImageIcon";
 static NSString *const kTableColumnImageShortName = @"ImageShortName";
 
@@ -47,10 +49,11 @@ static NSString *const kTableColumnImageShortName = @"ImageShortName";
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
     // Setup the results array
     _results = [[NSMutableArray alloc] init];
-    
+    _deletionArray = [[NSMutableArray alloc] init];
     // Setup double click
     [_resultsTableView setDoubleAction:@selector(tableViewDoubleClicked)];
-    
+    [self.deleteFiles setHidden:YES];
+    [_resultsTableView setAction:@selector(tableViewRowClicked)];
     // Setup labels
     [_statusLabel setTextColor:[NSColor lightGrayColor]];
     
@@ -218,8 +221,9 @@ static NSString *const kTableColumnImageShortName = @"ImageShortName";
         return [[NSImage alloc] initByReferencingFile:pngPath];
     } else if ([columnIdentifier isEqualToString:kTableColumnImageShortName]) {
         return [pngPath lastPathComponent];
+    }else if ([columnIdentifier isEqualToString:kTableColumnSelectIcon]) {
+        return [NSNumber numberWithInt:[_deletionArray containsObject:[NSNumber numberWithInteger:rowIndex]]?NSOnState:NSOffState];
     }
-    
     return pngPath;
 }
 
@@ -228,7 +232,17 @@ static NSString *const kTableColumnImageShortName = @"ImageShortName";
     NSString *path = [self.results objectAtIndex:[self.resultsTableView clickedRow]];
     [[NSWorkspace sharedWorkspace] selectFile:path inFileViewerRootedAtPath:nil];
 }
-
+-(void)tableViewRowClicked {
+    NSNumber *index = [NSNumber numberWithInteger:[self.resultsTableView clickedRow]];
+    NSLog(@"value of path ==%@",index);
+    if([_deletionArray containsObject:index]) {
+        [_deletionArray removeObject:index];
+    }else {
+        [_deletionArray addObject:index];
+    }
+    [self.deleteFiles setHidden:_deletionArray.count?NO:YES];
+    [_resultsTableView reloadData];
+}
 #pragma mark - <SearcherDelegate>
 - (void)searcherDidStartSearch:(Searcher *)searcher {
 }
@@ -261,4 +275,18 @@ static NSString *const kTableColumnImageShortName = @"ImageShortName";
     [self setUIEnabled:YES];
 }
 
+-(IBAction)deleteSelectedFiles:(id)sender {
+    if(!_deletionArray || _deletionArray.count == 0) return;
+    NSAlert *alertSheet = [NSAlert alertWithMessageText:@"Delete" defaultButton:@"OK" alternateButton:@"Cancel" otherButton:nil informativeTextWithFormat:@"Are you really want to delete?"];
+    [alertSheet beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse returnCode) {
+        NSLog(@"value of return  =%ld",(long)returnCode);
+        if(returnCode == 1) {
+            for(NSNumber *index in _deletionArray) {
+                NSString *pngPath = [self.results objectAtIndex:index.integerValue];
+                [[NSFileManager defaultManager] removeItemAtPath:pngPath error:nil];
+            }
+            [self startSearch:nil];
+        }
+    }];
+}
 @end

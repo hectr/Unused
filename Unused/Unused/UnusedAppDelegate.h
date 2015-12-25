@@ -128,6 +128,11 @@
  */
 @property (assign) IBOutlet NSButton *enumCheckbox;
 
+/**
+ *  The Delete button
+ */
+@property (assign) IBOutlet NSButton *deleteFiles;
+
 // ------ Actions ------
 /**
  *  The browse for xcode project action
