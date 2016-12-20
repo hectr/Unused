@@ -26,6 +26,18 @@
 
 #import "Searcher.h"
 #import "FileUtil.h"
+#include <sys/sysctl.h>
+
+static unsigned int countCores()
+{
+    size_t len;
+    unsigned int ncpu;
+    
+    len = sizeof(ncpu);
+    sysctlbyname ("hw.logicalcpu",&ncpu,&len,NULL,0);
+    
+    return ncpu;
+}
 
 @interface Searcher () {
 @private
@@ -125,6 +137,7 @@
     
     // Set up queue for checks
     _imageFilesQueue = [[NSOperationQueue alloc] init];
+    _imageFilesQueue.maxConcurrentOperationCount = countCores();
     _imageFilesQueue.underlyingQueue = queue;
     _imageFilesQueue.suspended = YES;
     
