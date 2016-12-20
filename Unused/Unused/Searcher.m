@@ -36,6 +36,7 @@
     NSMutableArray *_retinaImagePaths;
     
     NSOperationQueue *_searchQueue;
+    NSOperationQueue *_imageFilesQueue;
     BOOL isSearching;
     
     // Stores the file data to avoid re-reading files, using a lock to make it thread-safe.
@@ -121,11 +122,15 @@
     }
     
     dispatch_queue_t queue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-    dispatch_group_t group = dispatch_group_create();
     
-    // Now loop and check
+    // Set up queue for checks
+    _imageFilesQueue = [[NSOperationQueue alloc] init];
+    _imageFilesQueue.underlyingQueue = queue;
+    _imageFilesQueue.suspended = YES;
+    
+    // Now loop and enqueue checks
     [imageFiles enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
-        dispatch_group_async(group, queue, ^{
+        NSOperation *operation = [NSBlockOperation blockOperationWithBlock:^{
             NSString *imagePath = (NSString *)obj;
             
             BOOL isImagePathEmpty = [imagePath isEqualToString:@""];
@@ -159,22 +164,26 @@
                         });
                 }
             }
-        });
-    }];
-    
-    dispatch_group_notify(group, queue, ^{
-        dispatch_async(dispatch_get_main_queue(), ^{
-
-            [_results sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
-            
-            if (self.delegate && [self.delegate respondsToSelector:@selector(searcher:didFinishSearch:)]) {
-                [self.delegate searcher:self didFinishSearch:_results];
+        }];
+        //__weak typeof(_imageFilesQueue) imageFilesQueue = _imageFilesQueue;
+        operation.completionBlock = ^{
+            if (_imageFilesQueue.operationCount == 0) {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    
+                    [_results sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
+                    
+                    if (self.delegate && [self.delegate respondsToSelector:@selector(searcher:didFinishSearch:)]) {
+                        [self.delegate searcher:self didFinishSearch:_results];
+                    }
+                    
+                    isSearching = NO;
+                    [_fileData removeAllObjects];
+                });
             }
-            
-            isSearching = NO;
-            [_fileData removeAllObjects];
-        });
-    });
+        };
+        [_imageFilesQueue addOperation:operation];
+    }];
+    _imageFilesQueue.suspended = NO;
 }
 
 - (NSArray *)searchSettings {
