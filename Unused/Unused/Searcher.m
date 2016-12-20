@@ -35,7 +35,7 @@
     NSMutableArray *_results;
     NSMutableArray *_retinaImagePaths;
     
-    NSOperationQueue *_queue;
+    NSOperationQueue *_searchQueue;
     BOOL isSearching;
     
     // Stores the file data to avoid re-reading files, using a lock to make it thread-safe.
@@ -57,7 +57,7 @@
         _retinaImagePaths = [[NSMutableArray alloc] init];
         
         // Setup the queue
-        _queue = [[NSOperationQueue alloc] init];
+        _searchQueue = [[NSOperationQueue alloc] init];
         
         // Setup data lock
         _fileData = [NSMutableDictionary new];
@@ -70,7 +70,7 @@
  
     // Start the search
     NSInvocationOperation *searchOperation = [[NSInvocationOperation alloc] initWithTarget:self selector:@selector(runImageSearch:) object:self.projectPath];
-    [_queue addOperation:searchOperation];
+    [_searchQueue addOperation:searchOperation];
 }
 
 - (void)stop {
