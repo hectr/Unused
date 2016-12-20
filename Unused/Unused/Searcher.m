@@ -178,9 +178,9 @@ static unsigned int countCores()
                 }
             }
         }];
-        //__weak typeof(_imageFilesQueue) imageFilesQueue = _imageFilesQueue;
+        __weak typeof(_imageFilesQueue) imageFilesQueue = _imageFilesQueue;
         operation.completionBlock = ^{
-            if (_imageFilesQueue.operationCount == 0) {
+            if (imageFilesQueue && imageFilesQueue.operationCount == 0) {
                 dispatch_async(dispatch_get_main_queue(), ^{
                     
                     [_results sortUsingSelector:@selector(localizedCaseInsensitiveCompare:)];
